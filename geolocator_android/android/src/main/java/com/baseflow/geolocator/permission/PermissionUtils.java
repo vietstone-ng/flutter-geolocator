@@ -1,11 +1,17 @@
 package com.baseflow.geolocator.permission;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
 public class PermissionUtils {
+
+  private final static String SHARED_PREFERENCES_NAME = "com.baseflow.geolocator";
+  private final static String PERMISSION_ANSWERED_BEFORE_KEY = "PERMISSION_ANSWERED_BEFORE";
+  private final static String PERMISSION_DENIED_BEFORE_KEY = "PERMISSION_DENIED_BEFORE";
+
   public static boolean hasPermissionInManifest(Context context, String permission) {
     try {
       PackageInfo info = getPackageInfo(context);
@@ -34,5 +40,26 @@ public class PermissionUtils {
     
     return packageManager.getPackageInfo(packageName,
         PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS));
+  }
+
+  public static boolean wasPermissionAnsweredBefore(Context context) {
+    final SharedPreferences sharedPreferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+    return sharedPreferences.getBoolean(PERMISSION_ANSWERED_BEFORE_KEY, false);
+  }
+
+  public static void setPermissionAnsweredBefore(Context context) {
+    final SharedPreferences sharedPreferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+    final SharedPreferences.Editor editor = sharedPreferences.edit();
+    editor.putBoolean(PERMISSION_ANSWERED_BEFORE_KEY, true);
+    editor.apply();
+  }
+
+  public static boolean wasPermissionDeniedBefore(final Context context) {
+    final SharedPreferences sharedPreferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+    return sharedPreferences.getBoolean(PERMISSION_DENIED_BEFORE_KEY, false);
+  }
+  public static void setPermissionDenied(final Context context) {
+    final SharedPreferences sharedPreferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+    sharedPreferences.edit().putBoolean(PERMISSION_DENIED_BEFORE_KEY, true).apply();
   }
 }

@@ -16,8 +16,9 @@ import com.baseflow.geolocator.errors.ErrorCallback;
 import com.baseflow.geolocator.errors.ErrorCodes;
 import com.baseflow.geolocator.errors.PermissionUndefinedException;
 
-import java.security.Permission;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @SuppressWarnings("deprecation")
 public class PermissionManager
@@ -41,7 +42,11 @@ public class PermissionManager
       return permissionManagerInstance;
   }
 
-  public LocationPermission checkPermissionStatus(Context context)
+    public LocationPermission checkPermissionStatus(Context context) throws PermissionUndefinedException {
+        return checkPermissionStatus(context, null);
+    }
+
+  public LocationPermission checkPermissionStatus(Context context, Activity activity)
       throws PermissionUndefinedException {
     List<String> permissions = getLocationPermissionsFromManifest(context);
 
@@ -51,6 +56,7 @@ public class PermissionManager
     }
 
     int permissionStatus = PackageManager.PERMISSION_DENIED;
+    boolean shouldShowRationale = false;
 
     for (String permission : permissions) {
       if (ContextCompat.checkSelfPermission(context, permission)
@@ -58,10 +64,56 @@ public class PermissionManager
         permissionStatus = PackageManager.PERMISSION_GRANTED;
         break;
       }
+      if (activity != null
+          && ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
+        shouldShowRationale = true;
+      }
     }
 
     if (permissionStatus == PackageManager.PERMISSION_DENIED) {
-      return LocationPermission.denied;
+
+      // Solution 1
+      // === THIS BLOCK OF CODE IS FOR USING WITH PermissionUtils.wasPermissionAnsweredBefore.
+      // There is another block of code relating to this also. Check it.
+      //
+      // Theres's one consideration with this solution: At the first time the permission is requested,
+      // if the user press the `soft back` button or choose 'Allow only Once', then wasPermissionAnsweredBefore
+      // is true and shouldShowRationale is still false. This will make the permission as be denied
+      // forever, but it should be denied only.
+      //
+      if (!PermissionUtils.wasPermissionAnsweredBefore(context)) {
+        return LocationPermission.denied;
+      }
+
+      return shouldShowRationale
+          ? LocationPermission.denied
+          : LocationPermission.deniedForever;
+      // === END OF THE BLOCK: Solution 1
+
+//      // Solution 2
+//       === THIS BLOCK OF CODE IS FOR USING WITH PermissionUtils.wasPermissionDeniedBefore.
+//       This solution replicates the behavior of the pub 'permission_handler'.
+//       It based on the assumption that:
+//        - shouldShowRationale will always be false on the first time the permission is requested.
+//        - if the permission was denied once by the user, then shouldShowRationale will be true.
+//        - if the permission was denied more than once, then shouldShowRationale will be false.
+//
+//       This solution will be wrong if the user denied more than once without this method being
+//       called. Then call this method, wasDeniedBefore will be false, but it should be true.
+//
+//      boolean wasDeniedBefore = PermissionUtils.wasPermissionDeniedBefore(context);
+//      final boolean isDenied = wasDeniedBefore ? !shouldShowRationale : shouldShowRationale;
+//
+//      if (!wasDeniedBefore && isDenied) {
+//        PermissionUtils.setPermissionDenied(activity);
+//      }
+//
+//      if (wasDeniedBefore && isDenied) {
+//        return LocationPermission.deniedForever;
+//      }
+//
+//      return LocationPermission.denied;
+//      // === END OF THE BLOCK: Solution 2
     }
 
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -186,6 +238,11 @@ public class PermissionManager
         locationPermission = LocationPermission.deniedForever;
       }
     }
+
+    // === THIS BLOCK OF CODE IS FOR USING WITH PermissionUtils.wasPermissionAnsweredBefore.
+    // There is another block of code relating to this also. Check it.
+    PermissionUtils.setPermissionAnsweredBefore(activity);
+    // === END OF THE BLOCK
 
     if (this.resultCallback != null) {
       this.resultCallback.onResult(locationPermission);
