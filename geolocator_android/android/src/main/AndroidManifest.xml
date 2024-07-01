@@ -6,6 +6,7 @@
                 android:enabled="true"
                 android:exported="false"
                 android:foregroundServiceType="location"
+                android:stopWithTask="true"
                 android:name=".GeolocatorLocationService"/>
     </application>
 </manifest>
