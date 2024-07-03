@@ -83,6 +83,13 @@ public class GeolocatorLocationService extends Service {
     super.onDestroy();
   }
 
+  @Override
+  public void onTaskRemoved(Intent rootIntent) {
+    super.onTaskRemoved(rootIntent);
+    stopLocationService();
+    disableBackgroundMode();
+  }
+
   public boolean canStopLocationService(boolean cancellationRequested) {
     if (cancellationRequested) {
       return listenerCount == 1;
